@@ -138,6 +138,6 @@ namespace Nos3
         }
 
         // Here's how to send a reply
-        _command_node->send_reply_message(msg, response.size(), response.c_str());
+        _command_node->send_reply_message_async(msg, response.size(), response.c_str());
     }
 }
