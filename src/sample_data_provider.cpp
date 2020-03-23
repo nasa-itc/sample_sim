@@ -7,18 +7,13 @@
 
 namespace Nos3
 {
-    REGISTER_DATA_PROVIDER(SampleDataProvider,"BARPROVIDER");
+    REGISTER_DATA_PROVIDER(SampleDataProvider,"SAMPLE_PROVIDER");
 
     extern ItcLogger::Logger *sim_logger;
 
     SampleDataProvider::SampleDataProvider(const boost::property_tree::ptree& config) : SimIDataProvider(config)
     {
         sim_logger->trace("SampleDataProvider::SampleDataProvider:  Constructor executed");
-
-        std::ostringstream oss;
-        write_xml(oss, config);
-        sim_logger->info("SampleDataProvider::SampleDataProvider:  "
-            "configuration:\n%s", oss.str().c_str());
 
         sim_logger->trace("SampleDataProvider::SampleDataProvider:  Constructor exiting");
     }
