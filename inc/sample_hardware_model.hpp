@@ -13,8 +13,8 @@
 #include <Uart/Client/Uart.hpp>
 
 // Simulator Includes
+#include <sample_42_data_provider.hpp>
 #include <sample_data_point.hpp>
-#include <sample_data_provider.hpp>
 #include <sim_i_hardware_model.hpp>
 
 namespace Nos3
@@ -28,7 +28,9 @@ namespace Nos3
         void command_callback(NosEngine::Common::Message msg);
         std::vector<uint8_t> determine_response_for_request(const std::vector<uint8_t>& in_data);
         void send_periodic_data(NosEngine::Common::SimTime time);
+        void get_streaming_data(const SampleDataPoint& data_point, std::vector<uint8_t>& out_data);
         void uart_read_callback(const uint8_t *buf, size_t len);
+    
     private:
         std::atomic<bool>                       _keep_running;
         SimIDataProvider*                       _sdp;
@@ -40,9 +42,10 @@ namespace Nos3
         // Hardware Configuration
         std::uint32_t                           _counter;
         std::uint32_t                           _data;
+        double                                  _init_time_seconds;
         std::uint32_t                           _millisecond_stream_delay;
         
-        // Message, function to call to generate data for that message
+        // Message, functions to call to generate a specific data packet
         typedef void (SampleHardwareModel::*get_log_data_func)(const SampleDataPoint&, std::vector<uint8_t>&);
         std::map<std::string, get_log_data_func> _get_log_data_map; 
         
