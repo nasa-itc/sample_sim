@@ -28,12 +28,12 @@ namespace Nos3
         void command_callback(NosEngine::Common::Message msg);
         std::vector<uint8_t> determine_response_for_request(const std::vector<uint8_t>& in_data);
         void send_periodic_data(NosEngine::Common::SimTime time);
-        void get_streaming_data(const SampleDataPoint& data_point, std::vector<uint8_t>& out_data);
+        void stream_data(const SampleDataPoint& data_point, std::vector<uint8_t>& out_data);
         void uart_read_callback(const uint8_t *buf, size_t len);
     
     private:
         std::atomic<bool>                       _keep_running;
-        SimIDataProvider*                       _sdp;
+        SimIDataProvider*                       _sample_dp;
         std::unique_ptr<NosEngine::Client::Bus> _time_bus;
 
         // Hardware Protocol
@@ -41,16 +41,15 @@ namespace Nos3
 
         // Hardware Configuration
         std::uint32_t                           _counter;
-        std::uint32_t                           _data;
+        std::uint32_t                           _payload_data;
         double                                  _init_time_seconds;
         std::uint32_t                           _millisecond_stream_delay;
-        
-        // Message, functions to call to generate a specific data packet
-        typedef void (SampleHardwareModel::*get_log_data_func)(const SampleDataPoint&, std::vector<uint8_t>&);
-        std::map<std::string, get_log_data_func> _get_log_data_map; 
-        
-        // Message, (last absolute time function was called, period (seconds) to call function)
-        std::map<std::string, boost::tuple<double, double>> _periodic_logs; 
+        double                                  _second_stream_delay;
+
+        // Streaming
+        double                                  _next_time;
+        std::vector<uint8_t>                    _streaming_data;
+
     };
 }
 
