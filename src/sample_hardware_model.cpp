@@ -74,7 +74,7 @@ namespace Nos3
         std::string dp_name = config.get("simulator.hardware-model.data-provider.type", "SAMPLE_PROVIDER");
         _sample_dp = SimDataProviderFactory::Instance().Create(dp_name, config);
 
-        // Calculate next time to send
+        // Calculate next time to send streaming data
         _next_time = _absolute_start_time + _init_time_seconds;
         
         // Prepare streaming data header - 0xDEAD

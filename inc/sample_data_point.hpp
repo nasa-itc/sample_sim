@@ -3,6 +3,7 @@
 
 // Library Includes
 #include <boost/shared_ptr.hpp>
+#include <string>
 
 // NOS Engine Includes
 #include <ItcLogger/Logger.hpp>
@@ -18,18 +19,18 @@ namespace Nos3
     public:
         // Constructors
         SampleDataPoint(void);
-        SampleDataPoint(std::uint32_t data);
-        SampleDataPoint(const boost::shared_ptr<Sim42DataPoint> dp);
+        SampleDataPoint(double data);
+        SampleDataPoint(int16_t spacecraft, const boost::shared_ptr<Sim42DataPoint> dp);
 
         // Deconstructors
         ~SampleDataPoint(void);
 
         // Accessors
         std::string to_string(void) const;
-        uint32_t    get_sample_data(void) const {return _sample_data;}
+        double      get_sample_data(void) const {return _sample_data[0];}
     
     private:
-        uint32_t    _sample_data;
+        mutable std::vector<double> _sample_data;
     };
 }
 
