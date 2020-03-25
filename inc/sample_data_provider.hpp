@@ -25,7 +25,7 @@ namespace Nos3
         boost::shared_ptr<SimIDataPoint> get_data_point(void) const;
 
     private:
-        mutable uint32_t _request_count;
+        mutable double _request_count;
     };
 }
 
