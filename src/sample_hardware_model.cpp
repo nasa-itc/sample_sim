@@ -16,7 +16,6 @@ namespace Nos3
         std::string bus_name = "usart_29";
         int node_port = 29;
         _counter = 0;
-        _payload_data = 0xBAADC0DE;
         _init_time_seconds = 5.0;
         _millisecond_stream_delay = 1000;
         _second_stream_delay = 1.0;
@@ -82,7 +81,7 @@ namespace Nos3
         _streaming_data.push_back(0xDE);
         // Prepare streaming data payload
         _streaming_data.push_back(_counter);
-        _streaming_data.push_back(_payload_data);
+        _streaming_data.push_back(_counter); // Stand in for data
         // Prepare streaming data trailer - 0xBEEF
         _streaming_data.push_back(0xEF);
         _streaming_data.push_back(0xBE);
@@ -175,10 +174,11 @@ namespace Nos3
         out_data[4] = (_counter & 0x00F0) >> 8;
         out_data[5] = (_counter & 0x000F);
         // Update Payload - Data
-        out_data[6] = (_payload_data & 0xF000) >> 24;
-        out_data[7] = (_payload_data & 0x0F00) >> 16;
-        out_data[8] = (_payload_data & 0x00F0) >> 8;
-        out_data[9] = (_payload_data & 0x000F);
+        std::uint32_t value = static_cast<uint32_t>(data_point.get_sample_data());
+        out_data[6] = (value & 0xF000) >> 24;
+        out_data[7] = (value & 0x0F00) >> 16;
+        out_data[8] = (value & 0x00F0) >> 8;
+        out_data[9] = (value & 0x000F);
 
         // Log reply data in man readable format and ship the message bytes off
         sim_logger->debug("SampleHardwareModel::uart_read_callback:  REPLY   %s\n",

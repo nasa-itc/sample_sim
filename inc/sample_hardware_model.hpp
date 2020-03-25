@@ -41,7 +41,6 @@ namespace Nos3
 
         // Hardware Configuration
         std::uint32_t                           _counter;
-        std::uint32_t                           _payload_data;
         double                                  _init_time_seconds;
         std::uint32_t                           _millisecond_stream_delay;
         double                                  _second_stream_delay;
