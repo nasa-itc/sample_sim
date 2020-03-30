@@ -77,8 +77,8 @@ namespace Nos3
         _next_time = _absolute_start_time + _init_time_seconds;
         
         // Prepare streaming data header - 0xDEAD
-        _streaming_data.push_back(0xAD);
         _streaming_data.push_back(0xDE);
+        _streaming_data.push_back(0xAD);
         // Prepare streaming data counter
         _streaming_data.push_back(0x00);
         _streaming_data.push_back(0x00);
@@ -90,8 +90,8 @@ namespace Nos3
         _streaming_data.push_back(0x00);
         _streaming_data.push_back(0x00);
         // Prepare streaming data trailer - 0xBEEF
-        _streaming_data.push_back(0xEF);
         _streaming_data.push_back(0xBE);
+        _streaming_data.push_back(0xEF);
 
         // Add callback for streaming data
         _time_bus->add_time_tick_callback(std::bind(&SampleHardwareModel::send_periodic_data, this, std::placeholders::_1));
@@ -174,16 +174,17 @@ namespace Nos3
     void SampleHardwareModel::stream_data(const SampleDataPoint& data_point, std::vector<uint8_t>& out_data)
     {
         // Update Payload - Counter
-        out_data[2] = (_counter & 0xF000) >> 24;
-        out_data[3] = (_counter & 0x0F00) >> 16;
-        out_data[4] = (_counter & 0x00F0) >> 8;
-        out_data[5] = (_counter & 0x000F);
+        _counter++;
+        out_data[2] = (_counter >> 24) & 0x000000FF; 
+        out_data[3] = (_counter >> 16) & 0x000000FF; 
+        out_data[4] = (_counter >>  8) & 0x000000FF; 
+        out_data[5] = _counter & 0x000000FF;
         // Update Payload - Data
-        std::uint32_t value = static_cast<uint32_t>(data_point.get_sample_data());
-        out_data[6] = (value & 0xF000) >> 24;
-        out_data[7] = (value & 0x0F00) >> 16;
-        out_data[8] = (value & 0x00F0) >> 8;
-        out_data[9] = (value & 0x000F);
+        std::uint32_t value = static_cast<float>(data_point.get_sample_data());
+        out_data[6] = (value  >> 24) & 0x000000FF;
+        out_data[7] = (value  >> 16) & 0x000000FF;
+        out_data[8] = (value  >>  8) & 0x000000FF;
+        out_data[9] = value & 0x000000FF;
 
         // Log reply data in man readable format and ship the message bytes off
         sim_logger->debug("SampleHardwareModel::stream_data:  %s",
@@ -207,14 +208,14 @@ namespace Nos3
         }
 
         // Check header - 0xDEAD
-        if ((in_data[1] != 0xDE) || (in_data[0] !=0xAD))
+        if ((in_data[0] != 0xDE) || (in_data[1] !=0xAD))
         {
             sim_logger->debug("SampleHardwareModel::uart_read_callback:  Header incorrect!");
             return;
         }
 
         // Check trailer - 0xBEEF
-        if ((in_data[8] != 0xBE) || (in_data[7] !=0xEF))
+        if ((in_data[7] != 0xBE) || (in_data[8] !=0xEF))
         {
             sim_logger->debug("SampleHardwareModel::uart_read_callback:  Trailer incorrect!");
             return;

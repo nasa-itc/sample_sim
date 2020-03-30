@@ -68,7 +68,7 @@ namespace Nos3
 
         ss << std::fixed << std::setfill(' ');
         ss << "Sample Data Point: ";
-        ss << std::setprecision(std::numeric_limits<uint32_t>::digits10); // Full uint32_t precision
+        ss << std::setprecision(std::numeric_limits<double>::digits10); // Full double precision
         ss << " Sample Data: "
            << _sample_data[0];
 
