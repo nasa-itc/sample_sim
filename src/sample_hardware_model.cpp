@@ -180,11 +180,12 @@ namespace Nos3
         out_data[4] = (_counter >>  8) & 0x000000FF; 
         out_data[5] = _counter & 0x000000FF;
         // Update Payload - Data
-        std::uint32_t value = static_cast<float>(data_point.get_sample_data());
-        out_data[6] = (value  >> 24) & 0x000000FF;
-        out_data[7] = (value  >> 16) & 0x000000FF;
-        out_data[8] = (value  >>  8) & 0x000000FF;
-        out_data[9] = value & 0x000000FF;
+        float payload = static_cast<float>(data_point.get_sample_data());
+        uint32_t* value = (uint32_t*) &payload;
+        out_data[6] = value[3];
+        out_data[7] = value[2];
+        out_data[8] = value[1];
+        out_data[9] = value[0];
 
         // Log reply data in man readable format and ship the message bytes off
         sim_logger->debug("SampleHardwareModel::stream_data:  %s",
