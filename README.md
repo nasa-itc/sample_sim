@@ -54,7 +54,7 @@ Optionally the 42 data provider can be used:
 
 NOS<sup>3</sup> simulator code has been developed in C++ with Boost and relies on the NASA Operational Simulator (NOS) Engine for providing the software busses, nodes, and other connections that simulate the hardware busses such as UART (universal asynchronous receiver/transmitter), I2C (Inter-Integrated Circuit), SPI (Serial Peripheral Interface), CAN (Controller Area Network), PWM (pulse width modulation), and discrete I/O (input/output) signals/connections/ busses.  NOS Engine also provides the mechanism to distribute time to all the simulators (and to the flight software and 42).
 
- 
+![NOS<sup>3</sup> Simulator Architecture](NOS3-Sim-Architecture.png)
 
 The common architecture shown in the diagram above has been developed for the NOS<sup>3</sup> simulations.  This architecture has been developed for the following reasons:
 * __Bus level__ communication is the goal of NOS<sup>3</sup> simulations
@@ -104,7 +104,7 @@ Second, when the code above is executed, the data type of the literal ```“LITE
 2.	```common.nos-connection-string``` – Connection to NOS Engine server ( “tcp://ip:port”)
 3.	```common.absolute-start-time``` – The absolute start time of the simulation in decimal seconds from the J2000 epoch.  This must be synchronized with the epoch specified in the 42 Inp_Sim.txt file.
 4.	```common.sim-microseconds-per-tick``` – The integer number of microseconds the simulation should advance for every time tick.  Note that NOS Engine distributes time on its busses as a count of ticks.  So if your hardware model or data provider receive the number of ticks that represents the simulation time, it can convert this to real world simulation time using:
-```double abs_time =_absolute_start_time + (double(ticks *_sim_microseconds_per_tick)) / 1000000.0```; where ```_absolute_start_time``` is the value from ```common.absolute-start-time``` and ```_sim_microseconds_per_tick``` is the value from ```common.sim-microseconds-per-tick```.
+    >    ```double abs_time =_absolute_start_time + (double(ticks *_sim_microseconds_per_tick)) / 1000000.0```; where ```_absolute_start_time``` is the value from ```common.absolute-start-time``` and ```_sim_microseconds_per_tick``` is the value from ```common.sim-microseconds-per-tick```.
 5.	```simulator.name``` – The name you gave your simulator; it should agree with the string you put in the main function (see below).
 6.	```simulator.active``` – Normally true; if false, then your simulator will not be run when the ```SimConfig::run_simulator``` method is called in the ```main``` function (see below).
 7.	```simulator.hardware-model.type``` – The name string for your hardware model.  This is the key used for looking up the hardware model plugin that provides the code for your model.
@@ -121,13 +121,13 @@ The basic outline for creating a new hardware model is the following:
 3.	Create a ```void run(void)``` method.  This method should perform whatever tasks are supposed to be done when the hardware model is running.
 4.	Create a name string for your hardware model (e.g. ```FOOHARDWARE```) and add a line like the following to your source file:
 
->    ```REGISTER_HARDWARE_MODEL(FooHardwareModel,"FOOHARDWARE");```
+    >    ```REGISTER_HARDWARE_MODEL(FooHardwareModel,"FOOHARDWARE");```
 
 This name is the key specified in the ```simulator.hardware-model.type``` key (in the simulator configuration XML file) to specify that this is the hardware model plugin that provides the code for this hardware model.
 5.	If the hardware model uses a data provider, the hardware model could have a member variable of type ```SimIDataProvider *```, which can be set in the hardware model constructor based on configuration data by lines like (assuming the member variable name is ```_sim_data_provider```)):
 
->    ```std::string dp_name = config.get("simulator.hardware-model.data-provider.type", "BARPROVIDER");```
->    ```_sim_data_provider = SimDataProviderFactory::Instance().Create(dp_name, config);```
+    >    ```std::string dp_name = config.get("simulator.hardware-model.data-provider.type", "BARPROVIDER");```
+    >    ```_sim_data_provider = SimDataProviderFactory::Instance().Create(dp_name, config);```
 
 #####	Data Provider
 
@@ -138,7 +138,7 @@ The basic outline for creating a new data provider is the following:
 3.	Create a ```virtual boost::shared_ptr<SimIDataPoint> get_data_point(void) const;``` method… that does whatever is supposed to be done to retrieve (or compute or whatever) a data point when your data provider is asked for a data point and which returns a pointer to the retrieved data point.  You should also create a class that inherits publicly from ```SimIDataPoint``` to hold the data that you return from the data provider.
 4.	Create a name string for your data provider (e.g. ```BARPROVIDER```) and add a line like the following to your source file:
 
->    ```REGISTER_DATA_PROVIDER(BarDataProvider,"BARPROVIDER");```
+    >    ```REGISTER_DATA_PROVIDER(BarDataProvider,"BARPROVIDER");```
 
 This name is the key specified in the ```simulator.hardware-model.data-provider.type``` key (in the simulator configuration XML file) to specify that this is the data provider plugin that provides the code for this data provider.
 10.2.3.1	42 Data Provider Framework/Interface
@@ -148,7 +148,7 @@ Since 42 is anticipated to be a common provider of dynamic data over a socket in
 *    The ```Sim42DataPoint``` (*sim_42data_point.hpp*) contains a ```std::vector<std::string>``` of text lines for one “message” from 42 (call __```.get_lines()```__ to retrieve the text lines)
 It is up to the individual data provider in the individual simulator to parse the lines of data contained in a Sim42DataPoint.  An example from the generic reaction wheel simulator of using the common functionality together with a simulator specific parser is shown in the figure below.
 
- 
+![42 Data Provider Framework/Interface](42-DataProvider-Framework-Interface.png)
 
 #####	Connections
 
@@ -167,7 +167,7 @@ For an example of how data is received by and returned from the hardware model i
 
 ######	Time Connection
 
-For the hardware simulator to have a notion of time in the real world, it registers a node with NOS Engine as a time client node.  The formula for creating and using a time client node is:
+For the hardware simulator to have a notion of time in the real world, it registers a node with NOS Engine as a time client node.  The **formula** for creating and using a time client node is:
 1.	In the hardware model class, add member variables for the bus and time node, e.g.:
 ```std::unique_ptr<NosEngine::Client::Bus> _time_bus;```
 2.	In the hardware model constructor:
@@ -188,32 +188,45 @@ For the hardware simulator to have a notion of time in the real world, it regist
 
 ######	UART Connection
 
-For hardware that is connected via UART, the formula for the hardware to creating and using a node on the UART bus is the following:
+For hardware that is connected via UART, the **formula** for the hardware to creating and using a node on the UART bus is the following:
 1.	In the hardware model class, add a member variable for the UART connection like the following:
 ```std::unique_ptr<NosEngine::Uart::Uart>  _uart_connection;```
 2.	In the hardware model constructor:
     1.	The base ```SimIHardwareModel``` class has an existing hub, member variable ```_hub``` for the bus to connect to.  The connection string for NOS Engine can be retrieved from the XML configuration data by a call like:
-```std::string connection_string = config.get("common.nos-connection-string", "tcp://127.0.0.1:12001");```
+
+        >    ```std::string connection_string = config.get("common.nos-connection-string", "tcp://127.0.0.1:12001");```
+
     2.	Add a “usart” type connection to the XML configuration file something like:
-```<connection><type>usart</type><bus-name>usart_0</bus-name><node-port>99999</node-port></connection>```
+
+        >   ```<connection><type>usart</type><bus-name>usart_0</bus-name><node-port>99999</node-port></connection>```
+
     3.	Retrieve the bus name and node port into ```std::string``` variables like ```bus_name``` and ```node_port```.  For an example of how to do so, please see the example simulator.
     4.	Create a UART connection object:
->    ```_uart_connection.reset(new NosEngine::Uart::Uart(_hub, config.get("simulator.name", "foosim"), connection_string, bus_name));```
+
+        >    ```_uart_connection.reset(new NosEngine::Uart::Uart(_hub, config.get("simulator.name", "foosim"), connection_string, bus_name));```
+
     5.	Open the connection and set a callback for when the hardware UART is read:
->    ```_uart_connection->open(node_port);
->    ```_uart_connection->set_read_callback(std::bind(&FooHardwareModel::uart_read_callback, this, std::placeholders::_1, std::placeholders::_2));```
+
+        >    ```_uart_connection->open(node_port);
+        >    ```_uart_connection->set_read_callback(std::bind(&FooHardwareModel::uart_read_callback, this, std::placeholders::_1, std::placeholders::_2));```
+
 3.	Create a hardware model method for the callback (here is where most of the custom work for a specific hardware model would be done):
     1.	The signature should be like:
->    ```void FooHardwareModel::uart_read_callback(const uint8_t *buf, size_t len);```
+
+        >    ```void FooHardwareModel::uart_read_callback(const uint8_t *buf, size_t len);```
+
     2.	To return data, use the UART method: 
->    ```size_t UART::write(const uint8_t *const buf, size_t len);```
+
+        >    ```size_t UART::write(const uint8_t *const buf, size_t len);```
+
     3.	For an example, consult the example sim code.
 4.	In the hardware model destructor, make the call:
->    ```_uart_connection->close();```
+
+    >    ```_uart_connection->close();```
 
 ####	Writing Your Own Simulator
 
-The following formula describes how to create a simulator using a hardware model (and optionally a data provider) created using the formulas above:
+The following **formula** describes how to create a simulator using a hardware model (and optionally a data provider) created using the formulas above:
 
 1.	Create a main source file with the following contents:
 ```
@@ -232,11 +245,9 @@ main(int argc, char *argv[])
 
     // Determine the configuration and run the simulator
     Nos3::SimConfig sc(argc, argv);
-    Nos3::sim_logger->info("main:  %s simulator starting",
-simulator_name.c_str());
+    Nos3::sim_logger->info("main:  %s simulator starting", simulator_name.c_str());
     sc.run_simulator(simulator_name);
-    Nos3::sim_logger->info("main:  %s simulator terminating",
-simulator_name.c_str());
+    Nos3::sim_logger->info("main:  %s simulator terminating", simulator_name.c_str());
 }
 ```
 2.	Change “```foosim```” to whatever you would like the name of your simulator to be
