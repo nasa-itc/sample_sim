@@ -1,21 +1,10 @@
+#include <ItcLogger/Logger.hpp>
+
 #include <sample_data_point.hpp>
 
 namespace Nos3
 {
     extern ItcLogger::Logger *sim_logger;
-
-    SampleDataPoint::SampleDataPoint(void)
-    {
-        sim_logger->trace("SampleDataPoint::SampleDataPoint:  Empty constructor executed");
-    }
-
-    SampleDataPoint::SampleDataPoint(double data)
-    {
-        sim_logger->trace("SampleDataPoint::SampleDataPoint:  Defined constructor executed");
-
-        // Option to do calculations on provided data at this point
-        _sample_data.push_back(data * 2);
-    }
 
     SampleDataPoint::SampleDataPoint(int16_t spacecraft, const boost::shared_ptr<Sim42DataPoint> dp)
     {
@@ -25,7 +14,7 @@ namespace Nos3
         // 42 variables defined in `42/Include/42types.h`
         // 42 data stream defined in `42/Source/IPC/SimWriteToSocket.c`
         std::ostringstream MatchString;
-        MatchString << "SC[" << spacecraft << "].svb = ";
+        MatchString << "SC[" << spacecraft << "].svb = "; // <<< Change me to match the data from 42 you are interested in
         size_t MSsize = MatchString.str().size();
 
         // Parse 42 telemetry
@@ -40,26 +29,30 @@ namespace Nos3
                     size_t found = lines[i].find_first_of("=");
                     // Parse line
                     std::istringstream iss(lines[i].substr(found+1, lines[i].size()-found-1));
-                    _sample_data.clear();
-                    for (std::string s; iss >> s; )
-                    {
-                        _sample_data.push_back(std::stod(s));
-                    }
+                    // vvv Here is where you need to do some custom work to extract the data from the 42 string and save it off in the member data of this data point
+                    std::string s;
+                    iss >> s;
+                    _sample_data[0] = std::stod(s);
+                    iss >> s;
+                    _sample_data[1] = std::stod(s);
+                    iss >> s;
+                    _sample_data[2] = std::stod(s);
+
                     sim_logger->trace("SampleDataPoint::SampleDataPoint:  Parsed svb = %f %f %f", _sample_data[0], _sample_data[1], _sample_data[2]);
                 }
             }
         } 
         catch(const std::exception& e) 
         {
+            // Force data to be set to a known value, which by the way... in this example, (0,0,0) is not valid for a unit vector
+            _sample_data[0] = 0.0;
+            _sample_data[1] = 0.0;
+            _sample_data[2] = 0.0;
             sim_logger->error("SampleDataPoint::SampleDataPoint:  Parsing exception %s", e.what());
         }
     }
 
-    SampleDataPoint::~SampleDataPoint(void)
-    {
-        sim_logger->trace("SampleDataPoint::~SampleDataPoint:  Destructor executed");
-    }
-
+    // Mainly used for printing a representation of the data point
     std::string SampleDataPoint::to_string(void) const
     {
         sim_logger->trace("SampleDataPoint::to_string:  Executed");
@@ -70,7 +63,11 @@ namespace Nos3
         ss << "Sample Data Point: ";
         ss << std::setprecision(std::numeric_limits<double>::digits10); // Full double precision
         ss << " Sample Data: "
-           << _sample_data[0];
+           << _sample_data[0]
+           << " "
+           << _sample_data[1]
+           << " "
+           << _sample_data[2];
 
         return ss.str();
     }

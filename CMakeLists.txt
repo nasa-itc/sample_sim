@@ -11,7 +11,6 @@ include_directories(inc
 set(sample_sim_src
     src/sample_hardware_model.cpp
     src/sample_42_data_provider.cpp
-    src/sample_data_provider.cpp
     src/sample_data_point.cpp
 )
 
