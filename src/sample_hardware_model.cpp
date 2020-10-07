@@ -13,7 +13,14 @@ namespace Nos3
         std::string connection_string = config.get("common.nos-connection-string", "tcp://127.0.0.1:12001"); // Get the NOS engine connection string, needed for the busses
         sim_logger->info("SampleHardwareModel::SampleHardwareModel:  NOS Engine connection string: %s.", connection_string.c_str());
 
-        /* vvv 1. Get on the computer bus */
+        /* vvv 1. Get a data provider */
+        /* !!! If your sim does not *need* a data provider, delete this block. */
+        std::string dp_name = config.get("simulator.hardware-model.data-provider.type", "SAMPLE_PROVIDER");
+        _sample_dp = SimDataProviderFactory::Instance().Create(dp_name, config);
+        sim_logger->info("SampleHardwareModel::SampleHardwareModel:  Data provider %s created.", dp_name.c_str());
+        /* ^^^ 1. Get a data provider */
+
+        /* vvv 2. Get on the computer bus */
         /* !!! This block is fine for UART.  If you use a different bus type, change this, but most of the structure will be similar. !!! */
         std::string bus_name = "usart_0"; // Initialize to default in case value not found in config file
         int node_port = 0;                // Initialize to default in case value not found in config file
@@ -32,16 +39,9 @@ namespace Nos3
         _uart_connection.reset(new NosEngine::Uart::Uart(_hub, config.get("simulator.name", "sample_sim"), connection_string, bus_name));
         _uart_connection->open(node_port);
         sim_logger->info("SampleHardwareModel::SampleHardwareModel:  Now on UART bus name %s, port %d.", bus_name.c_str(), node_port);
-        /* ^^^ 1. Get on the computer bus */
+        /* ^^^ 2. Get on the computer bus */
         /* vvv !!! User tip:  You should implement a read callback if you need to handle unsolicited byte messages on your bus and provide byte responses. !!! */
         _uart_connection->set_read_callback(std::bind(&SampleHardwareModel::uart_read_callback, this, std::placeholders::_1, std::placeholders::_2));
-
-        /* vvv 2. Get a data provider */
-        /* !!! If your sim does not *need* a data provider, delete this block. */
-        std::string dp_name = config.get("simulator.hardware-model.data-provider.type", "SAMPLE_PROVIDER");
-        _sample_dp = SimDataProviderFactory::Instance().Create(dp_name, config);
-        sim_logger->info("SampleHardwareModel::SampleHardwareModel:  Data provider %s created.", dp_name.c_str());
-        /* ^^^ 2. Get a data provider */
 
         /* vvv 3. Streaming data */
         /* !!! If your sim does not *stream* data, delete this entire block. */
