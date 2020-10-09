@@ -1,3 +1,7 @@
+#include <ItcLogger/Logger.hpp>
+
+#include <sample_data_point.hpp>
+
 #include <sample_42_data_provider.hpp>
 
 namespace Nos3
@@ -17,11 +21,6 @@ namespace Nos3
         _sc = config.get("simulator.hardware-model.data-provider.spacecraft", 0);
     }
 
-    Sample42DataProvider::~Sample42DataProvider(void)
-    {
-        sim_logger->trace("Sample42DataProvider::~Sample42DataProvider:  Destructor executed");
-    }
-
     boost::shared_ptr<SimIDataPoint> Sample42DataProvider::get_data_point(void) const
     {
         sim_logger->trace("Sample42DataProvider::get_data_point:  Executed");
@@ -30,7 +29,7 @@ namespace Nos3
         const boost::shared_ptr<Sim42DataPoint> dp42 =
             boost::dynamic_pointer_cast<Sim42DataPoint>(SimData42SocketProvider::get_data_point());
 
-        // Prepare the specific data
+        // vvv Prepare the specific data... this may need changed in your use case
         SimIDataPoint *dp = new SampleDataPoint(_sc, dp42);
 
         return boost::shared_ptr<SimIDataPoint>(dp);
