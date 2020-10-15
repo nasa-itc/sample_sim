@@ -177,6 +177,11 @@ namespace Nos3
         // **just like** the real thing... most of the time you will have to **undo** (invert) the calculations the hardware spec says
         // to do to convert from raw units to engineering units
 
+        // Another point how does your hardware behave if the dynamic/environmental data is not valid? 
+        // ... you can check this value and make a decision:  data_point.is_sample_data_valid()
+        // ... in this case we are going to pretend that the hardware just pushes forward with whatever
+        // it has and the computer on the other end has to deal with detecting invalid data
+
         uint16_t x   = (uint16_t)(data_point.get_sample_data_x()*32767.0 + 32768.0);
         out_data[6]  = (x >> 8) & 0x00FF;
         out_data[7]  =  x       & 0x00FF;
@@ -231,6 +236,9 @@ namespace Nos3
                     (in_data[4] == _sample_stream_name[1]) && 
                     (in_data[5] == _sample_stream_name[2]) && 
                     (in_data[6] == _sample_stream_name[3])) { 
+                    // ... this is a good example of the type of thinking you need to do in the hardware model to make its byte interface behave
+                    // **just like** the real thing... understand exactly what order the bytes come over the wire, what type they represent, and
+                    // how to put them back together in the correct way to the correct type:
                     uint32_t millisecond_stream_delay = (in_data[7] << 24) +
                                                         (in_data[8] << 16) +
                                                         (in_data[9] << 8 ) +

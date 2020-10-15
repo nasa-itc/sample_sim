@@ -38,12 +38,15 @@ namespace Nos3
                     iss >> s;
                     _sample_data[2] = std::stod(s);
 
+                    _sample_data_is_valid = true;
+                    
                     sim_logger->trace("SampleDataPoint::SampleDataPoint:  Parsed svb = %f %f %f", _sample_data[0], _sample_data[1], _sample_data[2]);
                 }
             }
         } 
         catch(const std::exception& e) 
         {
+            _sample_data_is_valid = false;
             // Force data to be set to a known value, which by the way... in this example, (0,0,0) is not valid for a unit vector
             _sample_data[0] = 0.0;
             _sample_data[1] = 0.0;

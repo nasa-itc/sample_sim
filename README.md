@@ -118,16 +118,19 @@ The basic outline for creating a new hardware model is the following:
 
 1.	In ```namespace Nos3```, create a class (e.g. ```FooHardwareModel```) that inherits publicly from ```SimIHardwareModel```.
 2.	Create a constructor that takes a ```const boost::property_tree::ptree&``` parameter which contains configuration data.  Have the constructor retrieve configuration data and save any parameters and create any connections, data providers, or perform any other initialization that needs done for the hardware model.
-3.	Create a ```void run(void)``` method.  This method should perform whatever tasks are supposed to be done when the hardware model is running.
-4.	Create a name string for your hardware model (e.g. ```FOOHARDWARE```) and add a line like the following to your source file:
+3.	Create a name string for your hardware model (e.g. ```FOOHARDWARE```) and add a line like the following to your source file:
 
     >    ```REGISTER_HARDWARE_MODEL(FooHardwareModel,"FOOHARDWARE");```
 
 This name is the key specified in the ```simulator.hardware-model.type``` key (in the simulator configuration XML file) to specify that this is the hardware model plugin that provides the code for this hardware model.
-5.	If the hardware model uses a data provider, the hardware model could have a member variable of type ```SimIDataProvider *```, which can be set in the hardware model constructor based on configuration data by lines like (assuming the member variable name is ```_sim_data_provider```)):
+4.	If the hardware model uses a data provider, the hardware model could have a member variable of type ```SimIDataProvider *```, which can be set in the hardware model constructor based on configuration data by lines like (assuming the member variable name is ```_sim_data_provider```)):
 
     >    ```std::string dp_name = config.get("simulator.hardware-model.data-provider.type", "BARPROVIDER");```
     >    ```_sim_data_provider = SimDataProviderFactory::Instance().Create(dp_name, config);```
+5. If the hardware model should respond to bytes written on its hardware interface, create a method such as ```void uart_read_callback(const uint8_t *buf, size_t len)``` (UART example) and use the interface's ```set_read_callback()``` method so the method gets called when bytes are received (see the ```SampleHardwareModel``` constructor for how to use ```set_read_callback```).
+6. If the hardware model can stream messages, create one or more methods such as ```send_streaming_data(NosEngine::Common::SimTime time)``` and add it (them) to a map of names and methods that can be used to stream data (see the ```SampleHardwareModel``` constructor for how to add to the map and set configurations to stream data).
+7. If the hardware model can respond to out of band messages (e.g. commands to the sim, for things like fault injection, etc.), create a method named (exactly) ```command_callback(NosEngine::Common::Message msg)``` and have it perform the appropriate responses (see the ```SampleHardwareModel``` class for an example of such a method).
+8. Note that the hardware model is responsible for any formatting of bytes to send over the hardware interface; any dynamic data from a data provider should be received as is and then manipulated into the proper bytes by the hardware model. 
 
 #####	Data Provider
 
@@ -146,7 +149,8 @@ Since 42 is anticipated to be a common provider of dynamic data over a socket in
 *    __```send_command_to_socket(std::string)```__ method to send commands to 42 (*sim_data_42socket_provider.cpp*)
 *    __```get_data_point(void)```__ method allows easy hook up of a sim to 42 IPC and returning a __```Sim42DataPoint```__ (*sim_data_42socket_provider.hpp*)
 *    The ```Sim42DataPoint``` (*sim_42data_point.hpp*) contains a ```std::vector<std::string>``` of text lines for one “message” from 42 (call __```.get_lines()```__ to retrieve the text lines)
-It is up to the individual data provider in the individual simulator to parse the lines of data contained in a Sim42DataPoint.  An example from the generic reaction wheel simulator of using the common functionality together with a simulator specific parser is shown in the figure below.
+
+It is up to the individual data provider in the individual simulator to parse the lines of data contained in a Sim42DataPoint.  Note, however, that the data provider/data point should **not** be responsible for doing any units conversions/scaling, manipulations, byte conversions, etc.  That is the responsibility of the hardware model (so that the data provider and data point can remain hardware agnostic).  An example from the generic reaction wheel simulator of using the common functionality together with a simulator specific parser is shown in the figure below.
 
 ![42 Data Provider Framework/Interface](42-DataProvider-Framework-Interface.png)
 
