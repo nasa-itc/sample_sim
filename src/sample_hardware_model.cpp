@@ -147,6 +147,7 @@ namespace Nos3
                 if (search != _streaming_data_function_map.end()) {
                     streaming_data_func f = search->second;
                     (this->*f)(*data_point, data);
+                    sim_logger->debug("send_streaming_data:  Writing data to UART:  %s\n", uint8_vector_to_hex_string(data).c_str());
                     _uart_connection->write(&data[0], data.size());
                 }
             }
