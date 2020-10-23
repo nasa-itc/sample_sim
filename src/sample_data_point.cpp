@@ -63,7 +63,8 @@ namespace Nos3
         std::stringstream ss;
 
         ss << std::fixed << std::setfill(' ');
-        ss << "Sample Data Point: ";
+        ss << "Sample Data Point:   Valid: ";
+        ss << (_sample_data_is_valid ? "Valid" : "INVALID");
         ss << std::setprecision(std::numeric_limits<double>::digits10); // Full double precision
         ss << " Sample Data: "
            << _sample_data[0]

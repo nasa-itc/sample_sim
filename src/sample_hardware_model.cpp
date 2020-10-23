@@ -147,6 +147,7 @@ namespace Nos3
                 if (search != _streaming_data_function_map.end()) {
                     streaming_data_func f = search->second;
                     (this->*f)(*data_point, data);
+                    sim_logger->debug("send_streaming_data:  Data point:  %s\n", data_point->to_string().c_str());
                     sim_logger->debug("send_streaming_data:  Writing data to UART:  %s\n", uint8_vector_to_hex_string(data).c_str());
                     _uart_connection->write(&data[0], data.size());
                 }
@@ -229,34 +230,44 @@ namespace Nos3
         }
 
         // Process command type
-        switch (in_data[2])
+        switch (in_data[6])
         {
             case 1:
                 sim_logger->debug("SampleHardwareModel::uart_read_callback:  Configuration command received!");
-                if ((in_data[3] == _sample_stream_name[0]) && 
-                    (in_data[4] == _sample_stream_name[1]) && 
-                    (in_data[5] == _sample_stream_name[2]) && 
-                    (in_data[6] == _sample_stream_name[3])) { 
+                if ((in_data[2] == _sample_stream_name[0]) && 
+                    (in_data[3] == _sample_stream_name[1]) && 
+                    (in_data[4] == _sample_stream_name[2]) && 
+                    (in_data[5] == _sample_stream_name[3])) { 
                     // ... this is a good example of the type of thinking you need to do in the hardware model to make its byte interface behave
                     // **just like** the real thing... understand exactly what order the bytes come over the wire, what type they represent, and
                     // how to put them back together in the correct way to the correct type:
-                    uint32_t millisecond_stream_delay = (in_data[7] << 24) +
-                                                        (in_data[8] << 16) +
-                                                        (in_data[9] << 8 ) +
-                                                        (in_data[10]);
+                    uint32_t millisecond_stream_delay = ((uint32_t)in_data[7] << 24) +
+                                                        ((uint32_t)in_data[8] << 16) +
+                                                        ((uint32_t)in_data[9] << 8 ) +
+                                                        ((uint32_t)in_data[10]);
                     std::map<std::string, boost::tuple<double, double>>::iterator it = _periodic_streams.find(_sample_stream_name);
                     if ((it != _periodic_streams.end()) &&
                         (millisecond_stream_delay > 0)) {
                         boost::get<1>(it->second) = ((double)millisecond_stream_delay)/1000.0;
-                        sim_logger->debug("SampleHardwareModel::uart_read_callback:  New millisecond stream delay for %s of %d", 
+                        sim_logger->debug("SampleHardwareModel::uart_read_callback:  New millisecond stream delay for %s of %u", 
                             _sample_stream_name.c_str(), millisecond_stream_delay);
                     } else {
-                        sim_logger->error("SampleHardwareModel::uart_read_callback:  Stream %s was not set to be executed periodically or delay %d was not > 0",
+                        sim_logger->error("SampleHardwareModel::uart_read_callback:  Stream %s was not set to be executed periodically or delay %u was not > 0",
                             _sample_stream_name.c_str(), millisecond_stream_delay);
+                        // zero out the response data... to indicate invalid request
+                        in_data[ 7] = 0;
+                        in_data[ 8] = 0;
+                        in_data[ 9] = 0;
+                        in_data[10] = 0;
                     }
                 } else {
                     sim_logger->error("SampleHardwareModel::uart_read_callback:  Requested stream %c%c%c%c does not match prefix of %s", 
                         in_data[3], in_data[4], in_data[5], in_data[6], _sample_stream_name.c_str());
+                    // zero out the response data... to indicate invalid request
+                    in_data[ 7] = 0;
+                    in_data[ 8] = 0;
+                    in_data[ 9] = 0;
+                    in_data[10] = 0;
                 }
                 break;
 
