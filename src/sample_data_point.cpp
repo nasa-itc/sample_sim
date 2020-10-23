@@ -10,6 +10,12 @@ namespace Nos3
     {
         sim_logger->trace("SampleDataPoint::SampleDataPoint:  42 Constructor executed");
 
+        _sample_data_is_valid = false;
+        // Force data to be set to a known value, which by the way... in this example, (0,0,0) is not valid for a unit vector
+        _sample_data[0] = 0.0;
+        _sample_data[1] = 0.0;
+        _sample_data[2] = 0.0;
+
         // Declare 42 telemetry string prefix
         // 42 variables defined in `42/Include/42types.h`
         // 42 data stream defined in `42/Source/IPC/SimWriteToSocket.c`

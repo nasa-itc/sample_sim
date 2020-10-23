@@ -46,7 +46,7 @@ namespace Nos3
         /* vvv 3. Streaming data */
         /* !!! If your sim does not *stream* data, delete this entire block. */
         /* vvv !!! Add streaming data functions !!! USER TIP:  Add names and functions to stream data based on what your hardware can stream here */
-        _streaming_data_function_map.insert(std::map<std::string, streaming_data_func>::value_type(_sample_stream_name, &SampleHardwareModel::create_sample_stream_data));
+        _streaming_data_function_map.insert(std::map<std::string, streaming_data_func>::value_type(_sample_stream_name, &SampleHardwareModel::create_sample_data));
         /* ^^^ !!! Add streaming data functions !!! USER TIP:  Add names and functions to stream data based on what your hardware can stream here */
 
         /* Which streaming data functions are initially enabled should be set in the config file... which will be processed here. !!! DO NOT CHANGE BELOW.  */
@@ -155,8 +155,9 @@ namespace Nos3
         }
     }
 
-    // USER TIP:  This is your custom function to stream some kind of data... you can have 1 or more of these functions (or none if no streaming)
-    void SampleHardwareModel::create_sample_stream_data(const SampleDataPoint& data_point, std::vector<uint8_t>& out_data)
+    // USER TIP:  This is your custom function to create some kind of data to send... you can have 1 or more of these functions... 
+    // they can be called in response to a request, or periodically if streaming
+    void SampleHardwareModel::create_sample_data(const SampleDataPoint& data_point, std::vector<uint8_t>& out_data)
     {
         out_data.resize(14, 0x00);
         // Streaming data header - 0xDEAD
@@ -204,9 +205,11 @@ namespace Nos3
     void SampleHardwareModel::uart_read_callback(const uint8_t *buf, size_t len)
     {
         // Retrieve data and log received data in man readable format
+        boost::shared_ptr<SampleDataPoint> data_point;
         std::vector<uint8_t> in_data(buf, buf + len);
         sim_logger->debug("SampleHardwareModel::uart_read_callback:  REQUEST %s",
             SimIHardwareModel::uint8_vector_to_hex_string(in_data).c_str());
+        std::vector<uint8_t> out_data = in_data; // Initialize to just echo back what came in
 
         // Check if message is incorrect size
         if (in_data.size() != 13)
@@ -233,6 +236,13 @@ namespace Nos3
         switch (in_data[6])
         {
             case 1:
+                sim_logger->debug("SampleHardwareModel::uart_read_callback:  Send data command received!");
+                data_point = boost::dynamic_pointer_cast<SampleDataPoint>(_sample_dp->get_data_point());
+                sim_logger->debug("SampleHardwareModel::uart_read_callback:  Data point:  %s", data_point->to_string().c_str());
+                create_sample_data(*data_point, out_data); // Command not echoed back... actual sample data is sent
+                break;
+
+            case 2:
                 sim_logger->debug("SampleHardwareModel::uart_read_callback:  Configuration command received!");
                 if ((in_data[2] == _sample_stream_name[0]) && 
                     (in_data[3] == _sample_stream_name[1]) && 
@@ -269,19 +279,17 @@ namespace Nos3
                     in_data[ 9] = 0;
                     in_data[10] = 0;
                 }
+                out_data = in_data; // Echo back what was actually configured
                 break;
 
-            case 2:
+            case 3:
                 sim_logger->debug("SampleHardwareModel::uart_read_callback:  Other command received!");
                 break;
-
+            
             default:
                 sim_logger->debug("SampleHardwareModel::uart_read_callback:  Unused command received!");
                 break;
         }
-
-        // Prepare to echo back valid command
-        std::vector<uint8_t> out_data = in_data;
 
         // Log reply data in man readable format and ship the message bytes off
         sim_logger->debug("SampleHardwareModel::uart_read_callback:  REPLY %s",

@@ -27,7 +27,7 @@ namespace Nos3
         // Private helper methods
         void uart_read_callback(const uint8_t *buf, size_t len); // This guy handles unsolicited bytes the hardware receives from its peripheral bus
         void send_streaming_data(NosEngine::Common::SimTime time); // This guy provides an example of how to send unsolicited streaming data
-        void create_sample_stream_data(const SampleDataPoint& data_point, std::vector<uint8_t>& out_data); // This guy helps send_streaming_data
+        void create_sample_data(const SampleDataPoint& data_point, std::vector<uint8_t>& out_data); // This guy creates data to send from a data point
         void command_callback(NosEngine::Common::Message msg);  // This guy handles out of band commands to the sim on the command bus
 
         // Private data members
