@@ -46,7 +46,7 @@ namespace Nos3
         /* vvv 3. Streaming data */
         /* !!! If your sim does not *stream* data, delete this entire block. */
         /* vvv !!! Add streaming data functions !!! USER TIP:  Add names and functions to stream data based on what your hardware can stream here */
-        _streaming_data_function_map.insert(std::map<std::string, streaming_data_func>::value_type(_sample_stream_name, &SampleHardwareModel::create_sample_stream_data));
+        _streaming_data_function_map.insert(std::map<std::string, streaming_data_func>::value_type(_sample_stream_name, &SampleHardwareModel::create_sample_data));
         /* ^^^ !!! Add streaming data functions !!! USER TIP:  Add names and functions to stream data based on what your hardware can stream here */
 
         /* Which streaming data functions are initially enabled should be set in the config file... which will be processed here. !!! DO NOT CHANGE BELOW.  */
@@ -147,14 +147,17 @@ namespace Nos3
                 if (search != _streaming_data_function_map.end()) {
                     streaming_data_func f = search->second;
                     (this->*f)(*data_point, data);
+                    sim_logger->debug("send_streaming_data:  Data point:  %s\n", data_point->to_string().c_str());
+                    sim_logger->debug("send_streaming_data:  Writing data to UART:  %s\n", uint8_vector_to_hex_string(data).c_str());
                     _uart_connection->write(&data[0], data.size());
                 }
             }
         }
     }
 
-    // USER TIP:  This is your custom function to stream some kind of data... you can have 1 or more of these functions (or none if no streaming)
-    void SampleHardwareModel::create_sample_stream_data(const SampleDataPoint& data_point, std::vector<uint8_t>& out_data)
+    // USER TIP:  This is your custom function to create some kind of data to send... you can have 1 or more of these functions... 
+    // they can be called in response to a request, or periodically if streaming
+    void SampleHardwareModel::create_sample_data(const SampleDataPoint& data_point, std::vector<uint8_t>& out_data)
     {
         out_data.resize(14, 0x00);
         // Streaming data header - 0xDEAD
@@ -177,6 +180,11 @@ namespace Nos3
         // **just like** the real thing... most of the time you will have to **undo** (invert) the calculations the hardware spec says
         // to do to convert from raw units to engineering units
 
+        // Another point how does your hardware behave if the dynamic/environmental data is not valid? 
+        // ... you can check this value and make a decision:  data_point.is_sample_data_valid()
+        // ... in this case we are going to pretend that the hardware just pushes forward with whatever
+        // it has and the computer on the other end has to deal with detecting invalid data
+
         uint16_t x   = (uint16_t)(data_point.get_sample_data_x()*32767.0 + 32768.0);
         out_data[6]  = (x >> 8) & 0x00FF;
         out_data[7]  =  x       & 0x00FF;
@@ -197,9 +205,11 @@ namespace Nos3
     void SampleHardwareModel::uart_read_callback(const uint8_t *buf, size_t len)
     {
         // Retrieve data and log received data in man readable format
+        boost::shared_ptr<SampleDataPoint> data_point;
         std::vector<uint8_t> in_data(buf, buf + len);
         sim_logger->debug("SampleHardwareModel::uart_read_callback:  REQUEST %s",
             SimIHardwareModel::uint8_vector_to_hex_string(in_data).c_str());
+        std::vector<uint8_t> out_data = in_data; // Initialize to just echo back what came in
 
         // Check if message is incorrect size
         if (in_data.size() != 13)
@@ -223,45 +233,63 @@ namespace Nos3
         }
 
         // Process command type
-        switch (in_data[2])
+        switch (in_data[6])
         {
             case 1:
+                sim_logger->debug("SampleHardwareModel::uart_read_callback:  Send data command received!");
+                data_point = boost::dynamic_pointer_cast<SampleDataPoint>(_sample_dp->get_data_point());
+                sim_logger->debug("SampleHardwareModel::uart_read_callback:  Data point:  %s", data_point->to_string().c_str());
+                create_sample_data(*data_point, out_data); // Command not echoed back... actual sample data is sent
+                break;
+
+            case 2:
                 sim_logger->debug("SampleHardwareModel::uart_read_callback:  Configuration command received!");
-                if ((in_data[3] == _sample_stream_name[0]) && 
-                    (in_data[4] == _sample_stream_name[1]) && 
-                    (in_data[5] == _sample_stream_name[2]) && 
-                    (in_data[6] == _sample_stream_name[3])) { 
-                    uint32_t millisecond_stream_delay = (in_data[7] << 24) +
-                                                        (in_data[8] << 16) +
-                                                        (in_data[9] << 8 ) +
-                                                        (in_data[10]);
+                if ((in_data[2] == _sample_stream_name[0]) && 
+                    (in_data[3] == _sample_stream_name[1]) && 
+                    (in_data[4] == _sample_stream_name[2]) && 
+                    (in_data[5] == _sample_stream_name[3])) { 
+                    // ... this is a good example of the type of thinking you need to do in the hardware model to make its byte interface behave
+                    // **just like** the real thing... understand exactly what order the bytes come over the wire, what type they represent, and
+                    // how to put them back together in the correct way to the correct type:
+                    uint32_t millisecond_stream_delay = ((uint32_t)in_data[7] << 24) +
+                                                        ((uint32_t)in_data[8] << 16) +
+                                                        ((uint32_t)in_data[9] << 8 ) +
+                                                        ((uint32_t)in_data[10]);
                     std::map<std::string, boost::tuple<double, double>>::iterator it = _periodic_streams.find(_sample_stream_name);
                     if ((it != _periodic_streams.end()) &&
                         (millisecond_stream_delay > 0)) {
                         boost::get<1>(it->second) = ((double)millisecond_stream_delay)/1000.0;
-                        sim_logger->debug("SampleHardwareModel::uart_read_callback:  New millisecond stream delay for %s of %d", 
+                        sim_logger->debug("SampleHardwareModel::uart_read_callback:  New millisecond stream delay for %s of %u", 
                             _sample_stream_name.c_str(), millisecond_stream_delay);
                     } else {
-                        sim_logger->error("SampleHardwareModel::uart_read_callback:  Stream %s was not set to be executed periodically or delay %d was not > 0",
+                        sim_logger->error("SampleHardwareModel::uart_read_callback:  Stream %s was not set to be executed periodically or delay %u was not > 0",
                             _sample_stream_name.c_str(), millisecond_stream_delay);
+                        // zero out the response data... to indicate invalid request
+                        in_data[ 7] = 0;
+                        in_data[ 8] = 0;
+                        in_data[ 9] = 0;
+                        in_data[10] = 0;
                     }
                 } else {
                     sim_logger->error("SampleHardwareModel::uart_read_callback:  Requested stream %c%c%c%c does not match prefix of %s", 
                         in_data[3], in_data[4], in_data[5], in_data[6], _sample_stream_name.c_str());
+                    // zero out the response data... to indicate invalid request
+                    in_data[ 7] = 0;
+                    in_data[ 8] = 0;
+                    in_data[ 9] = 0;
+                    in_data[10] = 0;
                 }
+                out_data = in_data; // Echo back what was actually configured
                 break;
 
-            case 2:
+            case 3:
                 sim_logger->debug("SampleHardwareModel::uart_read_callback:  Other command received!");
                 break;
-
+            
             default:
                 sim_logger->debug("SampleHardwareModel::uart_read_callback:  Unused command received!");
                 break;
         }
-
-        // Prepare to echo back valid command
-        std::vector<uint8_t> out_data = in_data;
 
         // Log reply data in man readable format and ship the message bytes off
         sim_logger->debug("SampleHardwareModel::uart_read_callback:  REPLY %s",
